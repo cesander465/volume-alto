@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Volume Alto — recomendador musical</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Courier+Prime:wght@400;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="pagina">
+
+  <header class="capa">
+    <p class="faixa">Nº 07 · Verão 2004 · R$ 7,90</p>
+    <h1>Volume Alto</h1>
+    <p class="linha-capa">Indie, rock nacional, MPB e a pancada do nu metal: {{ total }} artistas para você descobrir.</p>
+  </header>
+
+  <main>
+    <form class="busca" method="get" autocomplete="off">
+      <label for="q">Quais artistas você curte?</label>
+      <div class="campo">
+        <input id="q" name="q" value="{{ q }}" placeholder="ex.: ana frango eletrico, limp bizkit, korn" required>
+        <ul id="auto" class="auto" hidden></ul>
+      </div>
+      <div class="opcoes">
+        <label>Clima
+          <select name="humor">{% for v, r in humores.items() %}<option value="{{ v }}" {{ 'selected' if v == humor }}>{{ r }}</option>{% endfor %}</select>
+        </label>
+        <label>Onde procurar
+          <select name="escopo">{% for v, r in escopos.items() %}<option value="{{ v }}" {{ 'selected' if v == escopo }}>{{ r }}</option>{% endfor %}</select>
+        </label>
+        <label class="check"><input type="checkbox" name="underground" value="1" {{ 'checked' if underground }}> Priorizar o underground</label>
+      </div>
+      <button type="submit">Ver indicações</button>
+      <div class="chips">
+        {% for s in sugestoes %}<button type="button" class="chip" data-nome="{{ s }}">{{ s }}</button>{% endfor %}
+      </div>
+    </form>
+
+    <section aria-live="polite">
+      {% if not buscou %}
+        <p class="vazio">Escolha um ou mais artistas e a redação monta os quadros com quem combina com o seu gosto, cada um com um álbum para começar.</p>
+      {% else %}
+        {% if escolhidos %}<p class="entendi">Você curte: <strong>{{ escolhidos | join(', ') }}</strong></p>{% endif %}
+        {% if nao_achados %}<p class="aviso">Não encontramos: {{ nao_achados | join(', ') }}. Confira a grafia.</p>{% endif %}
+        {% if cards %}<h2 class="titulo-secao">Na sua vitrola</h2>{% endif %}
+        <div class="quadros">
+          {% for c in cards %}
+          <article class="quadro">
+            <div class="legenda">
+              <span class="nota">{{ c.match }}% combina</span>
+              <h3>{{ c.nome }}</h3>
+              <p class="meta">{{ c.origem }} · {{ c.genero }}</p>
+              <p class="album"><small>Comece ouvindo</small><strong>{{ c.album if c.album else 'o lançamento mais recente' }}</strong></p>
+              {% if c.porque %}<p class="porque">Tem em comum: {{ c.porque | join(', ') }}</p>{% endif %}
+              <a href="{{ c.link }}" target="_blank" rel="noopener">Ouvir no Spotify</a>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+        {% if not cards and not nao_achados %}<p class="aviso">Nada novo com esses filtros. Tente outro clima.</p>{% endif %}
+      {% endif %}
+    </section>
+  </main>
+
+  <footer>Os álbuns sugeridos são pontos de partida: confira no seu serviço de streaming.</footer>
+</div>
+
+<script>
+/* ---------- autocomplete ---------- */
+const q = document.getElementById('q'), auto = document.getElementById('auto');
+q.addEventListener('input', async () => {
+  const termo = q.value.split(',').pop().trim();
+  if (termo.length < 2) { auto.hidden = true; return; }
+  try {
+    const nomes = await (await fetch('/api/sugestoes?q=' + encodeURIComponent(termo))).json();
+    auto.innerHTML = '';
+    nomes.forEach(n => { const li = document.createElement('li'); li.textContent = n;
+      li.onclick = () => { const p = q.value.split(','); p[p.length-1] = ' ' + n;
+        q.value = p.join(',').trim() + ', '; auto.hidden = true; q.focus(); };
+      auto.appendChild(li); });
+    auto.hidden = !nomes.length;
+  } catch (e) { auto.hidden = true; }
+});
+document.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => {
+  const atual = q.value.trim().replace(/,$/, '');
+  q.value = atual ? atual + ', ' + b.dataset.nome : b.dataset.nome; q.focus();
+}));
+
+</script>
+</body>
+</html>
